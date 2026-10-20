@@ -1,3 +1,4 @@
+<img width="1280" height="800" alt="title_4x" src="https://github.com/user-attachments/assets/1b12bdbf-bef5-4753-a592-f6aed2e4b9ce" />
 # Giganoid 3D (desktop app)
 
 The Giganoid 3D remake packaged as a Windows app with [Tauri](https://tauri.app): one exe, its own 1300x920 window,
