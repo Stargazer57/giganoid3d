@@ -1,0 +1,51 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: tauri-${{ hashFiles('src-tauri/Cargo.toml') }}
+
+      - name: Build
+        working-directory: src-tauri
+        run: cargo build --release
+
+      - name: Collect exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item src-tauri/target/release/giganoid3d.exe out/Giganoid3D.exe
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Giganoid3D
+          path: out/Giganoid3D.exe
+
+      - name: Publish as the "latest" release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag 2>$null
+          gh release create latest out/Giganoid3D.exe --title "Giganoid 3D (latest build)" --notes "Built from commit ${{ github.sha }}. Download Giganoid3D.exe and run it; settings are saved in a Giganoid3D-data folder next to it."
