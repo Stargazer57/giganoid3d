@@ -5,6 +5,9 @@ no browser and no local server. It runs on WebView2, the Edge engine built into 
 
 **Download:** the latest exe is on the [Releases page](../../releases/tag/latest).
 
+** YOU MUST SUPPLY YOUR OWN .ADF AMIGA DISKS - NO GAME DATA IS INCLUDED **
+(You can also add Arkanoid, Revenge of Doh, Amegas and Crystal Hammer although the latter two games are not fully tested )
+
 Settings, loaded level disks and custom sounds are saved in a `Giganoid3D-data` folder next to the exe.
 
 Every push to `main` rebuilds the exe on GitHub Actions (`.github/workflows/build.yml`).
