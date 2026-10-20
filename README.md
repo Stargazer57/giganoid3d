@@ -1,4 +1,4 @@
-<img width="1280" height="800" alt="Giganoid 3D title screen" src="https://github.com/user-attachments/assets/1b12bdbf-bef5-4753-a592-f6aed2e4b9ce" />
+<img width="1280" height="800" alt="title_4x.png" src="https://github.com/user-attachments/assets/1b12bdbf-bef5-4753-a592-f6aed2e4b9ce" />
 
 # Giganoid 3D
 
@@ -30,11 +30,11 @@ and runs as a standalone Windows app.
 - **L** Laser: a 15-second laser bat with auto-fire.
 - **P** Extra life.
 - **B** Break: opens an exit to the next round.
-- **N** Neutrino: the ball passes straight through bricks for 10 seconds.
-- **M** Multi: every ball splits, up to 10 balls.
-- **G** Grenade: six orbiting neutrinos burst out in all directions with one click.
-- **I** Iceberg: for 10 seconds, every brick hit shatters a 3×3 block.
-- **R** Replicant: a second bat guards the top of the screen for 15 seconds.
+- *NEW* **N** Neutrino: the ball passes straight through bricks for 10 seconds.
+- *NEW* **M** Multi: every ball splits, up to 10 balls.
+- *NEW* **G** Grenade: six orbiting neutrinos burst out in all directions with one click.
+- *NEW* **I** Iceberg: for 10 seconds, every brick hit shatters a 3×3 block.
+- *NEW* **R** Replicant: a second bat guards the top of the screen for 15 seconds.
 - Big red countdowns show how long each timed power-up has left.
 - **T** Tilt: shakes the board to free a stuck ball.
 
