@@ -67,6 +67,9 @@ and runs as a standalone Windows app.
 ## Running it
 - **Windows app:** download `Giganoid3D.exe` from the [Releases page](../../releases/tag/latest) and run it.
   Settings, loaded disks and sounds are saved in a `Giganoid3D-data` folder next to the exe.
+- **Disks load automatically:** put your `.adf` files next to the exe, or in any folder directly inside its folder.
+  At startup the game finds the Giganoid disk and any Arkanoid, Revenge of Doh, Amegas or Crystal Hammer disks.
+  It asks you for a disk only if it can't find the Giganoid one.
 - The first time, Windows may show "Windows protected your PC" because the exe isn't signed.
   Click *More info → Run anyway*.
 
