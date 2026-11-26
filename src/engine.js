@@ -1063,7 +1063,10 @@ const PANEL_X = 234;
 const GRID_STD = { cols: 13, rows: 18, bpx: 17, bw: 16, bpy: 7, bh: 6 }, GRID_WIDE = { cols: 20, rows: 20, bpx: 17, bw: 16, bpy: 8, bh: 7 };
 // the playfield's right edge follows the grid: 13 columns = the original 221 px; wider grids widen the stage
 // and the stage grows taller with it (bat lower), keeping roughly the original games' proportions
-const setField = () => { PR = PL + G.cols * G.bpx; const dy = Math.round((PR - 227) * 0.45); BAT_Y = 185 + dy; H = 200 + dy; };
+const setField = () => {
+  PR = PL + G.cols * G.bpx; const dy = Math.round((PR - 227) * 0.45); BAT_Y = 185 + dy; H = 200 + dy;
+  G.batMul = PR > 227 ? 1.55 : 1;   // Amegas / Crystal Hammer: their bat is ~48 px (3 bricks) against Giganoid's 31
+};
 const BRICK = (c, r) => [(G.bpx || 17) * c + 6, (G.bpy || 7) * r + 12];
 const INTERMISSION = new Set([5, 10, 15, 20, 30, 35, 40, 45]);
 const START_ROUND = [1, 11, 21, 31];
@@ -1085,11 +1088,12 @@ const G = {
 try { G.top = parseInt(localStorage.getItem('giganoid-top') || '0', 10) || 0; } catch (e) {}
 
 // XXXL: the (E) bat at twice its width, stretched about its centre
-const batScale = () => (G.xxl ? 2 : 1);
+// G.batMul: the original games' own bat size on their rounds (Amegas / Crystal Hammer bats are ~3 bricks wide)
+const batScale = () => (G.xxl ? 2 : 1) * (G.batMul || 1);
 function batCol(x) {
   const e = A.bat[G.batF].ext;
-  if (!G.xxl) return x - G.batX;
-  const cx = G.batX + (e.l + e.r) / 2; return Math.round(cx + (x - cx) / 2) - G.batX;
+  const k = batScale(); if (k === 1) return x - G.batX;
+  const cx = G.batX + (e.l + e.r) / 2; return Math.round(cx + (x - cx) / k) - G.batX;
 }
 function batGeom() {
   const b = A.bat[G.batF], e = b.ext, k = batScale(), cx = G.batX + (e.l + e.r) / 2;
@@ -1804,7 +1808,7 @@ function updatePlay() {
   G.batX += (G.batFrac || 0) + INPUT.dx; INPUT.dx = 0;
   if (keys.has('ArrowLeft')) G.batX -= 4;
   if (keys.has('ArrowRight')) G.batX += 4;
-  const ext = G.xxl ? (e.r - e.l) / 2 : 0;   // XXXL reaches half its width further each way
+  const ext = (e.r - e.l) * (batScale() - 1) / 2;   // a scaled-up bat (XXXL, Amegas size) reaches further each way
   const minX = PL - e.l + ext, maxX = (G.warp ? PR + 40 : PR - 1) - e.r - ext;
   { const want = Math.max(minX, Math.min(maxX, G.batX)); G.batX = Math.round(want); G.batFrac = want - G.batX; }
   // pull the bat out once 60% of its width has passed the exit edge
