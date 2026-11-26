@@ -1837,7 +1837,7 @@ function updatePlay() {
       SFX.hard(b.x + 2);
     }
     else if (G.laser && G.batF === 0 && (SET.classic ? G.shots.length < 2 : (G.laserCool || 0) <= 0 && G.shots.length < 6)) {
-      G.shots.push({ x: Math.round((g.l + g.r) / 2) - 8, y: g.top - 8 });
+      G.shots.push({ x: Math.round((g.l + g.r) / 2) - 8, y: g.top - 8, sp: Math.round(5.5 * (G.batMul || 1) - 5.5) });   // wide stages: guns sit further apart
       // tapping: a new pair every 6 frames; held auto-fire is 20% slower (7.5 frames, the half frame carried over)
       G.laserCool = auto ? Math.max(G.laserCool || 0, -1) + 7.5 : 6;   // a new pair every 6 frames (~0.12 s) — the sound is the held-fire loop below, not a per-shot one-shot
     }
@@ -1899,7 +1899,7 @@ function updatePlay() {
     // move one pixel at a time so fast bolts can't skip over a brick row
     for (let k = 0; k < laserSpeed && !s.dead; k++) {
       s.y--;
-      for (const bx of [s.x + 2, s.x + 13]) {
+      for (const bx of [s.x + 2 - (s.sp || 0), s.x + 13 + (s.sp || 0)]) {
         const h = cellAt(bx, s.y);
         if (h && !s.dead) { hitBrick(h, true); s.dead = true; }
       }

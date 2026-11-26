@@ -1396,7 +1396,7 @@ function renderFrame(alpha, now) {
     tips.forEach((t, i) => { const s = i ? 1 : -1, [px, py] = endPos(s, 4.1 + 3.9 * 0.55 - 0.35); t.position.set(px, py, t.position.z); t.visible = true; t.scale.setScalar(0.5); });
     { const want = expanded ? batShade : batShadeLaser; if (batBodyMat.map !== want) { batBodyMat.map = want; } }
     // laser: two guns on top, exactly where the beams leave the bat (5.5 px either side of the centre), kicking back on each shot
-    guns.forEach((g, i) => { const s = i ? 1 : -1; g.position.set(s * 5.5, 3.2 - kick * 0.8, 0); g.visible = laser; });
+    guns.forEach((g, i) => { const s = i ? 1 : -1; g.position.set(s * (5.5 + Math.round(5.5 * (G.batMul || 1) - 5.5)), 3.2 - kick * 0.8, 0); g.visible = laser; });
     if (toyOn) { tips.forEach(t => (t.visible = false)); caps.forEach(c => (c.visible = false)); } else caps.forEach(c => (c.visible = true));
     // end lights: small, mostly dim, with a quick blink every 2-3 s that speeds up as the ball speeds up
     const blinkEvery = Math.max(700, 2600 - (G.speed || 0) * 380);
@@ -1602,7 +1602,7 @@ function renderFrame(alpha, now) {
 
   // lasers & boss shots
   let li = 0;
-  if (playing) for (const s of G.shots) for (const ox of [2, 13]) { if (li < laserPool.length) { const m = laserPool[li++]; m.visible = true; m.position.set(X(s.x + ox + 0.5), Y(s.y + 4), 1); if (m.userData.streak) m.userData.streak.visible = !SET.classic; } }
+  if (playing) for (const s of G.shots) for (const ox of [2 - (s.sp || 0), 13 + (s.sp || 0)]) { if (li < laserPool.length) { const m = laserPool[li++]; m.visible = true; m.position.set(X(s.x + ox + 0.5), Y(s.y + 4), 1); if (m.userData.streak) m.userData.streak.visible = !SET.classic; } }
   for (; li < laserPool.length; li++) laserPool[li].visible = false;
   let si = 0;
   if (playing) for (const s of G.bossShots) if (si < shotPool.length) {
