@@ -1086,7 +1086,8 @@ function placeCamera(t) {
   const vy = 0;   // tilted view: horizontal swing only, no vertical tilt
   const half = THREE.MathUtils.degToRad(camera.fov / 2);
   const needH = 118 + fieldDY / 2, needW = (PX_R - PX_L) / 2 + 18;   // 118 x 132 for the standard field
-  const dist = Math.max(needH / Math.tan(half), needW / (Math.tan(half) * camera.aspect)) * 1.02;
+  const zoom = G.cols === 20 ? 1.12 : 1;   // Amegas: its wide stage looked small, so the camera moves 12% closer
+  const dist = Math.max(needH / Math.tan(half), needW / (Math.tan(half) * camera.aspect)) * 1.02 / zoom;
   const tilt = 0;   // camera straight in front, as in flat view
   const idle = G.mode === 'title' || G.mode === 'load';
   // tilted view: the camera swings a little toward the bat's side, so that side comes closer
