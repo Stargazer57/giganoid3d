@@ -1,0 +1,329 @@
+<meta charset="utf-8">
+<title>Giganoid 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ground: #07060c;
+    --panel: rgba(18, 16, 28, .78);
+    --edge: rgba(120, 140, 200, .22);
+    --ink: #e4e0ee;
+    --muted: #8f89a2;
+    --red: #ff5a52;
+    --blue: #4b97ff;
+    --gold: #ffd166;
+    --display: "Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { background: var(--ground); color: var(--ink); font: 14px/1.5 var(--mono); padding-inline: 16px; padding-block: 14px 20px; }
+  .wrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { margin: 0; font: 700 24px/1 var(--display); letter-spacing: .14em; }
+  h1 span { color: var(--red); }
+  .status { color: var(--muted); font-size: 12px; }
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 10; max-width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--edge); }
+  .stage canvas.gl { display: block; width: 100%; height: 100%; cursor: none; touch-action: none; }
+  .stage.idle canvas.gl { cursor: default; }
+
+  /* HUD */
+  .hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; pointer-events: none; }
+  .hud .grp { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hud.side { right: auto; flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start; }
+  .hud.side .grp { flex-wrap: nowrap; gap: 6px; }
+  .hud.side .chip { padding: 4px 8px; }
+  .hud.side .chip b { font-size: 16px; }
+  .hud.side.narrow .grp { flex-direction: column; }
+  .hud.side .chip { min-width: 96px; }
+  .chip { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 5px 10px; backdrop-filter: blur(6px); }
+  .chip small { display: block; font: 500 10px/1.2 var(--display); letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+  .chip b { font: 700 18px/1.2 var(--display); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+  .chip b.power { color: var(--gold); }
+  .grp:has(> .timers) { position: relative; }
+  /* floats above the score chip, so the chips below never move when a countdown appears or ends */
+  .timers { position: absolute; left: 2px; bottom: calc(100% + 6px); display: flex; flex-direction: column-reverse; gap: 2px; align-items: flex-start; pointer-events: none; }
+  .timers .t { display: flex; align-items: baseline; gap: 8px; color: var(--red); text-shadow: 0 0 14px rgba(255,59,47,.55); }
+  .timers .t b { font: 700 64px/1 var(--display); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .timers .t small { font: 600 11px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; opacity: .85; }
+  .fps { position: absolute; left: 10px; bottom: 8px; font: 500 11px/1 var(--mono); color: rgba(228,224,238,.38); letter-spacing: .04em; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .msg { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .msg .big { font: 700 clamp(26px, 5vw, 54px)/1 var(--display); letter-spacing: .12em; text-shadow: 0 0 18px rgba(75,151,255,.7); }
+  .msg .sub { font: 500 clamp(13px, 1.8vw, 18px)/1.2 var(--display); letter-spacing: .3em; color: var(--gold); }
+  .msg .faces { display: flex; gap: 14px; }
+  .msg canvas { width: clamp(64px, 12vw, 128px); image-rendering: pixelated; }
+
+  /* cards: loader, title, game over */
+  .card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: radial-gradient(ellipse at center, rgba(7,6,12,.35), rgba(7,6,12,.85)); }
+  .card .box { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; max-width: 560px; width: 100%; }
+  .card h2 { margin: 0; font: 700 clamp(18px, 3vw, 28px)/1.15 var(--display); letter-spacing: .08em; text-wrap: balance; }
+  .card p { margin: 0; color: var(--muted); max-width: 48ch; font-size: 13px; }
+  .card .err { color: var(--red); min-height: 1.4em; }
+  #titlePic { width: min(100%, 480px); aspect-ratio: 320 / 200; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  .levels { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .levels button { min-width: 64px; font: 700 16px/1 var(--display); letter-spacing: .1em; }
+  .continue { font: 700 16px/1 var(--display); letter-spacing: .1em; background: var(--blue); border-color: var(--blue); color: #06101f; padding: 12px 22px; }
+  .continue:hover { background: #6aa9ff; }
+  .levels button:first-child { background: var(--red); border-color: var(--red); color: #1a0706; }
+  button, .filebtn { font: 500 13px/1 var(--mono); color: var(--ink); background: #1e1b29; border: 1px solid #3e3950; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+  button:hover, .filebtn:hover { background: #2a2638; }
+  button:focus-visible, .filebtn:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .filebtn { background: var(--red); border-color: var(--red); color: #1a0706; }
+  .filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  /* pause menu: no dimming, sits at the right, clear of the play area */
+  #pauseCard { background: none; pointer-events: none; }
+  #pauseCard .box { box-sizing: border-box; pointer-events: auto; width: 240px; max-width: 240px; align-items: stretch; padding: 14px; border-radius: 14px; background: rgba(9,9,16,.82); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  #pauseCard .box h2 { text-align: center; }
+  #pauseCard .hint { font-size: 11.5px; }
+  .card.drag { outline: 2px dashed var(--blue); outline-offset: -10px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+  .bar .group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 18px; margin: 0; color: var(--muted); font-size: 12.5px; }
+  .keys div { display: flex; gap: 8px; }
+  .keys dt { color: var(--ink); min-width: 10ch; }
+  .keys dd { margin: 0; }
+  .keys[hidden] { display: none; }
+  .dialog { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(7,6,12,.74); }
+  .dialog .panel { background: #14121e; border: 1px solid var(--edge); border-radius: 14px; padding: 12px 18px; width: min(1260px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  .dialog .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 10px 22px; }
+  .dialog .col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .dialog .col h3:first-child { margin-top: 0; }
+  .dialog h2 { margin: 0; font: 700 20px/1.2 var(--display); letter-spacing: .08em; }
+  .dialog h3 { margin: 6px 0 0; font: 500 13px/1.2 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { display: flex; justify-content: space-between; gap: 12px; }
+  .field output { font: 700 15px/1 var(--display); font-variant-numeric: tabular-nums; color: var(--gold); }
+  .field input[type=range] { width: 100%; accent-color: var(--red); }
+  .field input[type=range]:disabled { opacity: .35; }
+  .field label.check { justify-content: space-between; align-items: center; cursor: pointer; }
+  .field label.check input { width: 18px; height: 18px; accent-color: var(--red); }
+  .eqPanel { margin-top: 2px; }
+  .eqPanel h4 { margin: 6px 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .eqPanel h4 button { font: inherit; font-size: 11px; padding: 1px 8px; cursor: pointer; }
+  .eqBands { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .eqBand { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); }
+  .eqBand input.g { writing-mode: vertical-lr; direction: rtl; width: 22px !important; height: 64px; accent-color: var(--red); }
+  .eqBand input.q, .eqBand input.fr { width: 100% !important; accent-color: var(--red); height: 14px; margin: 0; }
+  .eqBand input.fr { accent-color: var(--blue); }
+  .eqBand output { font-variant-numeric: tabular-nums; color: inherit; font-size: 11px !important; font-weight: 500; }
+  .eqBand .f { font-weight: 600; }
+  .hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .sndlist { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+  .sndlist li { background: #1e1b29; border: 1px solid #3e3950; border-radius: 6px; padding: 3px 8px; }
+  .menu { display: flex; flex-direction: column; gap: 8px; width: min(260px, 100%); }
+  .menu button { width: 100%; }
+  .titlebtns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+  @media (max-width: 560px) { .chip b { font-size: 15px; } .hud { top: 8px; left: 8px; right: 8px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>GIGA<span>NOID</span> 3D</h1>
+    <div class="status" id="status">Reads the game from your own Amiga disk image</div>
+  </header>
+
+  <div class="stage idle" id="stage">
+    <div class="hud" id="hud" hidden>
+      <div class="grp">
+        <div class="timers" id="hTimers"></div>
+        <div class="chip"><small>Score</small><b id="hScore">0</b></div>
+        <div class="chip"><small>Top</small><b id="hTop">0</b></div>
+      </div>
+      <div class="grp">
+        <div class="chip"><small>Round</small><b id="hRound">01</b></div>
+        <div class="chip"><small>Ships</small><b id="hLives">2</b></div>
+        <div class="chip"><small>Power</small><b class="power" id="hPower">–</b></div>
+      </div>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="fps" id="fps" aria-hidden="true"></div>
+
+    <div class="card" id="loader">
+      <div class="box">
+        <h2>Insert your Giganoid disk</h2>
+        <p>Choose or drop <b>Giganoid.adf</b>. It is unpacked in your browser and remembered for next time. Levels, samples, backgrounds and boss faces all come from it.</p>
+        <label class="filebtn">Choose disk image<input type="file" id="adfInput" accept=".adf,application/octet-stream"></label>
+        <p class="err" id="loadErr" role="alert"></p>
+      </div>
+    </div>
+
+    <div class="card" id="titleCard" hidden>
+      <div class="box">
+        <canvas id="titlePic" width="320" height="200" aria-label="Title picture from your disk"></canvas>
+        <p id="titleTop">Top score 0</p>
+        <button type="button" id="btnContinue" class="continue" hidden>Continue</button>
+        <div class="levels" role="group" aria-label="Choose start level">
+          <button type="button" data-lv="0">I</button>
+          <button type="button" data-lv="1">II</button>
+          <button type="button" data-lv="2">III</button>
+          <button type="button" data-lv="3">IV</button>
+        </div>
+        <div class="titlebtns">
+          <button type="button" id="tSettings">Settings</button>
+          <button type="button" id="tCam">Camera: flat</button>
+        </div>
+      </div>
+    </div>
+
+<div class="dialog" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
+      <div class="panel">
+        <h2 id="setTitle">Settings</h2>
+        <div class="cols">
+          <div class="col">
+            <h3>Gameplay</h3>
+            <label class="check" for="setClassic"><span>Classic rules</span><input type="checkbox" id="setClassic"></label>
+            <p class="hint">The original game's rules: its speed table and 4 angles, flat-topped bat, original power-ups and lasers.</p>
+            <div class="field">
+              <label for="setSpeed">Ball speed <output id="setSpeedOut">100%</output></label>
+              <input type="range" id="setSpeed" min="50" max="200" step="5" value="100">
+            </div>
+            <div class="field">
+              <label for="setAngles">Bounce angles <output id="setAnglesOut">7</output></label>
+              <input type="range" id="setAngles" min="1" max="7" step="1" value="7">
+            </div>
+            <label class="check" for="setTaper"><span>Edge-weighted angle zones</span><input type="checkbox" id="setTaper"></label>
+            <label class="check" for="setArkBat"><span>Arkanoid bat (its 3 angles and zones, from the original code)</span><input type="checkbox" id="setArkBat"></label>
+            <label class="check" for="setCurved"><span>Curved bat (bounce depends on where it hits and how it came in)</span><input type="checkbox" id="setCurved"></label>
+            <p class="hint">New: zones widest just off centre and narrower toward the edges, with a tight straight-up centre. Off = classic equal-width zones.</p>
+            <div class="field">
+              <label for="setDrop">Power-up drop speed <output id="setDropOut">100%</output></label>
+              <input type="range" id="setDrop" min="25" max="300" step="5" value="100">
+            </div>
+            <div class="field">
+              <label for="setMouse">Mouse speed <output id="setMouseOut">100%</output></label>
+              <input type="range" id="setMouse" min="25" max="300" step="5" value="100">
+            </div>
+            <label class="check" for="setAccel"><span>Mouse acceleration</span><input type="checkbox" id="setAccel"></label>
+            <p class="hint">Fast flicks move the bat further; small movements stay precise.</p>
+            <label class="check" for="setAutofire"><span>Auto-fire lasers while holding the button</span><input type="checkbox" id="setAutofire"></label>
+          </div>
+          <div class="col">
+            <h3>Visuals</h3>
+            <div class="field">
+              <label for="setFov">Perspective <output id="setFovOut">44°</output></label>
+              <input type="range" id="setFov" min="12" max="75" step="1" value="44">
+            </div>
+            <div class="field">
+              <label for="setShadow">Shadow darkness <output id="setShadowOut">50%</output></label>
+              <input type="range" id="setShadow" min="0" max="100" step="5" value="50">
+            </div>
+            <label class="check" for="setCustomBg"><span>New level backgrounds</span><input type="checkbox" id="setCustomBg" checked></label>
+            <div class="field">
+              <label for="setReach">Ball light reach <output id="setReachOut">200%</output></label>
+              <input type="range" id="setReach" min="50" max="400" step="10" value="200">
+            </div>
+            <div class="field">
+              <label for="setGlow">Glow <output id="setGlowOut">10%</output></label>
+              <input type="range" id="setGlow" min="0" max="100" step="5" value="10">
+            </div>
+            <label class="check" for="setTrails"><span>Ball trails</span><input type="checkbox" id="setTrails"></label>
+            <label class="check" for="setDust"><span>Floating sparkles</span><input type="checkbox" id="setDust"></label>
+            <label class="check" for="setAA"><span>Anti-aliasing (smooth edges)</span><input type="checkbox" id="setAA"></label>
+            <label class="check" for="setCA"><span>Chromatic aberration at the edges</span><input type="checkbox" id="setCA"></label>
+            <label class="check" for="setMirror"><span>Pipe reflections</span><input type="checkbox" id="setMirror"></label>
+            <label class="check" for="setFps"><span>Show frame rate</span><input type="checkbox" id="setFps"></label>
+          </div>
+          <div class="col">
+            <h3>Sounds</h3>
+            <p class="hint">Load WAV, MP3 or OGG files named like the sound pack: sfx_01 to sfx_18, intro, jingle. Several files for one sound (sfx_03a, sfx_03b...) are played as random variations.</p>
+            <div class="row">
+              <label class="filebtn">Load sounds<input type="file" id="sndInput" multiple accept="audio/*,.wav,.mp3,.ogg"></label>
+              <button id="sndReset" type="button">Use original sounds</button>
+            </div>
+            <ul class="sndlist" id="sndList"></ul>
+            <h3>Levels</h3>
+            <p class="hint" id="packInfo">Load your Arkanoid, Revenge of Doh, Amegas and Crystal Hammer disks (.adf) to carry on with their rounds after Giganoid's 50.</p>
+            <div class="row">
+              <label class="filebtn">Load level disk<input type="file" id="packInput" accept=".adf,.js,.json,.txt,text/plain,application/json"></label>
+              <button id="packClear" type="button">Remove</button>
+            </div>
+            <label class="check" for="setPack"><span>Continue with them after round 50</span><input type="checkbox" id="setPack"></label>
+          </div>
+          <div class="col">
+            <h3>Audio</h3>
+            <div class="field">
+              <label for="setReverb">Reverb <output id="setReverbOut">18%</output></label>
+              <input type="range" id="setReverb" min="0" max="100" step="2" value="18">
+            </div>
+            <div class="field">
+              <label for="setMusic">Procedural music <output id="setMusicOut">55%</output></label>
+              <input type="range" id="setMusic" min="0" max="100" step="5" value="55">
+            </div>
+            <div class="field">
+              <label for="setPulse">Pulse (bass beat) <output id="setPulseOut">50%</output></label>
+              <input type="range" id="setPulse" min="0" max="100" step="5" value="50">
+            </div>
+            <label class="check" for="setSfx"><span>Game sounds</span><input type="checkbox" id="setSfx" checked></label>
+            <label class="check" for="setLowAudio"><span>Low-power audio</span><input type="checkbox" id="setLowAudio"></label>
+            <div class="field eqWrap">
+              <label class="check" for="setEqSplit"><span>Separate EQs for music / game sounds</span><input type="checkbox" id="setEqSplit"></label>
+              <div id="eqBox"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <button id="setDefaults" type="button">Restore defaults</button>
+          <button id="setClose" type="button">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="pauseCard" hidden>
+      <div class="box">
+        <h2>Paused</h2>
+        <div class="menu">
+          <button type="button" id="pResume" class="continue">Resume</button>
+          <button type="button" id="pSettings">Settings</button>
+          <button type="button" id="pCam">Camera: flat</button>
+          <button type="button" id="pSound">Sound on</button>
+          <button type="button" id="pQuit">Quit to title</button>
+        </div>
+        <p class="hint">Esc or middle click pauses · P resumes · S settings · V camera · U sound</p>
+      </div>
+    </div>
+
+    <div class="card" id="overCard" hidden>
+      <div class="box">
+        <h2 id="overTitle">Game over</h2>
+        <p id="overText"></p>
+        <button type="button" id="btnAgain">Back to title</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="group">
+      <button id="btnPause" type="button">Pause</button>
+      <button id="btnTilt" type="button">Tilt</button>
+      <button id="btnMute" type="button">Sound on</button>
+      <button id="btnCam" type="button">Camera: tilted</button>
+      <button id="btnFull" type="button">Fullscreen</button>
+      <button id="btnSettings" type="button">Settings</button>
+      <button id="btnEditor" type="button">Level editor</button>
+      <button id="btnHelp" type="button" aria-expanded="false" aria-controls="keys">Instructions</button>
+    </div>
+    <div class="group"><button id="btnDisk" type="button">Change disk</button></div>
+  </div>
+
+  <dl class="keys" id="keys" hidden>
+    <div><dt>Mouse</dt><dd>Move the bat (click to capture the pointer)</dd></div>
+    <div><dt>F</dt><dd>Photo mode: free camera, lens, depth of field, motion blur, save a photo (Esc to leave)</dd></div>
+    <div><dt>Click / Space</dt><dd>Launch ball, fire lasers</dd></div>
+    <div><dt>← →</dt><dd>Keyboard movement</dd></div>
+    <div><dt>Esc / P</dt><dd>Pause menu (settings, camera, sound)</dd></div>
+    <div><dt>S · V · U · J · K</dt><dd>Settings · camera · sound · jump to a round · level editor</dd></div>
+    <div><dt>E · C · L · B · D · N · M · G · I · X</dt><dd>Expand · catch · laser · break · disruption · neutrino · multi · grenade · iceberg · XXXL power-ups</dd></div>
+  </dl>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="ui.js"></script>

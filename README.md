@@ -16,9 +16,9 @@ and runs as a standalone Windows app.
 ### Five games in one
 - Plays all 50 rounds of Giganoid, read straight from your own disk image.
 - Loads the rounds of **Arkanoid** and **Revenge of Doh** from your own disks and plays them after Giganoid.
-- Plays all 37 **Amegas** rounds 1:1, on their own wider grid, with Amegas's special stones:
+- Plays all 37 **Amegas** rounds 1:1 on a widened stage, with Amegas's special stones:
   power, exit, survivor, spreader, jumper and killer.
-- Plays all 50 **Crystal Hammer** rounds.
+- Plays all 50 **Crystal Hammer** rounds 1:1 on a widened stage.
 - Includes a level editor for building your own rounds.
 - Lets you jump to any round from a level picker, or skip rounds with the `[` and `]` keys.
 
@@ -74,5 +74,5 @@ and runs as a standalone Windows app.
   Click *More info → Run anyway*.
 
 ## How it's built
-The game is `dist/index.html`. Every push to `main` rebuilds the exe on GitHub Actions
+The game's source is in `src/`; the build bundles it with three.js into one page (`tools/bundle.mjs`). Every push to `main` rebuilds the exe on GitHub Actions
 with [Tauri](https://tauri.app), which runs it in the WebView2 engine built into Windows 10 and 11.

@@ -15,6 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bundle the game (src/ + three.js -> dist/index.html)
+        run: npm install --no-audit --no-fund && npm run bundle
+
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal && rustup default stable
 
