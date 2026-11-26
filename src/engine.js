@@ -1060,12 +1060,14 @@ const BOSS_EYES = [[29, 37], [79, 38]];    // fireball spawn (ball centre, boss-
 const PANEL_X = 234;
 // brick grid: 13 x 18 bricks 16 px wide on a 17 px pitch; Amegas (20 x 20) and Crystal Hammer (18 x 20) rounds keep
 // their own grids 1:1 with full-size bricks, and the stage widens to fit them
-const GRID_STD = { cols: 13, rows: 18, bpx: 17, bw: 16, bpy: 7, bh: 6 }, GRID_WIDE = { cols: 20, rows: 20, bpx: 17, bw: 16, bpy: 8, bh: 7 };
+const GRID_STD = { cols: 13, rows: 18, bpx: 17, bw: 16, bpy: 7, bh: 6 }, GRID_WIDE = { cols: 20, rows: 20, bpx: 17, bw: 16, bpy: 8, bh: 7 }, GRID_AMEGAS = { bpx: 16, bw: 15, bpy: 9, bh: 8 };   // Amegas: 15x8 bricks on a 16x9 pitch, 320 px wide
 // the playfield's right edge follows the grid: 13 columns = the original 221 px; wider grids widen the stage
 // and the stage grows taller with it (bat lower), keeping roughly the original games' proportions
 const setField = () => {
-  PR = PL + G.cols * G.bpx; const dy = Math.round((PR - 227) * 0.45); BAT_Y = 185 + dy; H = 200 + dy;
-  G.batMul = PR > 227 ? 1.55 : 1;   // Amegas / Crystal Hammer: their bat is ~48 px (3 bricks) against Giganoid's 31
+  PR = PL + G.cols * G.bpx; const amegas = G.cols === 20;
+  // Amegas (measured off the original): bricks start 205 px above the bat, and the bat is ~32 px, about Giganoid's
+  const dy = amegas ? Math.round(12 + 205 - 185) : Math.round((PR - 227) * 0.45); BAT_Y = 185 + dy; H = 200 + dy;
+  G.batMul = amegas ? 1.05 : PR > 227 ? 1.55 : 1;   // Amegas / Crystal Hammer: their bat is ~48 px (3 bricks) against Giganoid's 31
 };
 const BRICK = (c, r) => [(G.bpx || 17) * c + 6, (G.bpy || 7) * r + 12];
 const INTERMISSION = new Set([5, 10, 15, 20, 30, 35, 40, 45]);
@@ -1418,7 +1420,7 @@ function buildRound(r) {
   // bricks (from the disk's level, or from an imported pack when one is loaded and switched on)
   const usePack = !!pf, pk = usePack ? packCells(pf.pack, pf.i) : null;
   Object.assign(G, GRID_STD);
-  if (pk && (pk[0].length !== 13 || pk.length !== 18)) Object.assign(G, GRID_WIDE, { cols: pk[0].length, rows: pk.length });
+  if (pk && (pk[0].length !== 13 || pk.length !== 18)) { Object.assign(G, GRID_WIDE, { cols: pk[0].length, rows: pk.length }); if (G.cols === 20) Object.assign(G, GRID_AMEGAS); }
   setField();
   const grid = []; const breakable = [];
   for (let y = 0; y < G.rows; y++) {
@@ -1957,7 +1959,7 @@ function updatePlay() {
     const g = G.regen[i];
     if (--g.t > 0) continue;
     const [bx, by] = BRICK(g.c, g.r);
-    if (G.grid[g.r][g.c] || G.balls.some(b => b.x + 5 > bx && b.x < bx + G.bw && b.y + 5 > by && b.y < by + 6)) { g.t = 10; continue; }
+    if (G.grid[g.r][g.c] || G.balls.some(b => b.x + 5 > bx && b.x < bx + G.bw && b.y + 5 > by && b.y < by + (G.bh || 6))) { g.t = 10; continue; }
     g.cell.hits = g.cell.maxHits; g.cell.flash = 8; g.cell.mx = 0; G.grid[g.r][g.c] = g.cell; G.regen.splice(i, 1);
   }
   // flashes
