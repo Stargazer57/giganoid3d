@@ -165,7 +165,8 @@ function pipe(len, horiz) {
   return g;
 }
 // frame: straight pipes joined by quarter-circle elbows at the two top corners
-const BEND = 7, PX_L = 2.5, PY_T = 3, PY_B = 320, PY_GAP = 176;
+const BEND = 7, PX_L = 2.5, PY_T = 3, PY_B = 320;
+let PY_GAP = 176;   // top of the exit gate: lower on the taller widened stage
 let PX_R = PR + 3.5;   // right pipe: follows the playfield width
 function straight(pxA, pyA, pxB, pyB) {           // pipe between two original-pixel points
   const horiz = pyA === pyB, len = horiz ? Math.abs(pxB - pxA) : Math.abs(pyB - pyA);
@@ -237,20 +238,26 @@ warpLight.position.set(X(232), Y(189), 6); scene.add(warpLight);
 // wider rounds (Amegas, Crystal Hammer): move the side pipes out, stretch the top pipe, background and fades
 const FIELD_W0 = 230.5 - PX_L;
 let fieldPR = 227;
+let fieldDY = 0;
 function fitField() {
   if (PR === fieldPR) return; fieldPR = PR;
-  PX_R = PR + 3.5; FRAME.r = PR - 1;
+  const dy = BAT_Y - 185;   // the stage is taller too
+  PX_R = PR + 3.5; FRAME.r = PR - 1; FRAME.b = 198 + dy; PY_GAP = 176 + dy; fieldDY = dy;
+  const kR = (PY_GAP - PY_T - BEND) / (176 - PY_T - BEND);
   const k = (PX_R - PX_L) / FIELD_W0, kTop = (PX_R - PX_L - 2 * BEND) / (FIELD_W0 - 2 * BEND);
   const place = (list) => {
     list[0].position.x = X(PX_L); list[1].position.x = X(PX_R); list[2].position.x = X(PX_R);
+    list[1].position.y = Y((PY_T + BEND + PY_GAP) / 2); list[1].scale.y = kR;      // right pipe down to the gate
+    list[2].position.y = Y((PY_GAP + PY_B) / 2 + dy / 2);                          // the gate pipe moves down with it
     list[3].position.x = X((PX_L + PX_R) / 2); list[3].scale.y = kTop;
     list[4].position.x = X(PX_L + BEND); list[5].position.x = X(PX_R - BEND);
   };
   place([wallL, wallRTop, wallRLow, wallT, ...frameElbows]);
   mirrorGroup.children.forEach(copy => place(copy.children));
   for (const m of [bgPlane, vignette]) { m.scale.x = k; m.position.x = X((PX_L + PX_R) / 2); }
-  bottomFade.scale.x = k; bottomFade.position.x = X((PX_L + PX_R) / 2);
-  warpLight.position.x = X(PR + 5);
+  bottomFade.scale.x = k; bottomFade.position.x = X((PX_L + PX_R) / 2); bottomFade.position.y = Y((194 + 330) / 2 + dy);
+  warpLight.position.set(X(PR + 5), Y(189 + dy), 6);
+  DUST_R = PR - 4; DUST_B = 196 + dy;
 }
 
 // bottom fade: the playfield melts into the dark surroundings below the bat instead of ending in a hard edge.
@@ -752,7 +759,8 @@ for (let i = 0; i < 12; i++) {
 /* ---------- floating sparkles: tiny motes drifting slowly over the level, fading in and out,
    with the odd one catching the light and glittering for a moment ---------- */
 const DUST_N = 170;
-const DUST_L = 10, DUST_R = 223, DUST_T = 10, DUST_B = 196;   // the level's inner area, in original pixels
+const DUST_L = 10, DUST_T = 10;
+let DUST_R = 223, DUST_B = 196;   // follow the widened / taller stage (fitField)   // the level's inner area, in original pixels
 const dustGeo = new THREE.BufferGeometry();
 const dustPos = new Float32Array(DUST_N * 3), dustCol = new Float32Array(DUST_N * 3);
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3).setUsage(THREE.DynamicDrawUsage));
@@ -1077,15 +1085,15 @@ function placeCamera(t) {
   if (dt > 0) { camBias = smoothDamp(camBias, camTarget, dt, camH); camBiasY = smoothDamp(camBiasY, camTargetY, dt, camV); }
   const vy = 0;   // tilted view: horizontal swing only, no vertical tilt
   const half = THREE.MathUtils.degToRad(camera.fov / 2);
-  const needH = 118, needW = (PX_R - PX_L) / 2 + 18;   // 132 for the standard field
+  const needH = 118 + fieldDY / 2, needW = (PX_R - PX_L) / 2 + 18;   // 118 x 132 for the standard field
   const dist = Math.max(needH / Math.tan(half), needW / (Math.tan(half) * camera.aspect)) * 1.02;
   const tilt = 0;   // camera straight in front, as in flat view
   const idle = G.mode === 'title' || G.mode === 'load';
   // tilted view: the camera swings a little toward the bat's side, so that side comes closer
   const orbit = idle ? Math.sin(t * 0.00025) * 0.35 : (VIEW.mode === 'tilted' ? (camBias / 115) * 0.15 * (SET.fov / 42) : 0);
   const sx = shake ? (Math.random() - 0.5) * shake : 0, sy = shake ? (Math.random() - 0.5) * shake : 0;
-  camera.position.set(Math.sin(orbit) * dist * 0.5 + sx, -Math.sin(tilt) * dist + sy - 6 + vy * 0.13, Math.cos(tilt) * dist);
-  camera.lookAt(sx * 0.5 + (VIEW.mode === 'tilted' && !idle ? camBias * 0.018 : 0), -8 + vy * 0.06, 0);
+  camera.position.set(Math.sin(orbit) * dist * 0.5 + sx, -Math.sin(tilt) * dist + sy - 6 - fieldDY / 2 + vy * 0.13, Math.cos(tilt) * dist);
+  camera.lookAt(sx * 0.5 + (VIEW.mode === 'tilted' && !idle ? camBias * 0.018 : 0), -8 - fieldDY / 2 + vy * 0.06, 0);
 }
 new ResizeObserver(fitCamera).observe(stage);
 
@@ -1220,7 +1228,7 @@ function setupRoundVisuals() {
 Object.assign(FX, {
   brickHit(c, r) {
     const [bx, by] = BRICK(c, r), g = hitGlows[hitGlowI++ % hitGlows.length];
-    g.at = clockNow; g.sp.position.set(X(bx + (G.bw || 16) / 2), Y(by + 3), 5); g.sp.visible = true;
+    g.at = clockNow; g.sp.position.set(X(bx + (G.bw || 16) / 2), Y(by + (G.bh || 6) / 2), 5); g.sp.visible = true;
   },
   broken(c, r, t) {
     const [bx, by] = BRICK(c, r);
@@ -1264,7 +1272,7 @@ function renderFrame(alpha, now) {
   }
   let nb = 0, nm = 0, ns = 0; const ng = [0, 0, 0, 0, 0, 0];
   const survOn = ((G.frame >> 5) & 1) === 1;
-  const BH = (G.bw || 16) / 2, BXS = (G.bw || 16) / 16;   // brick half-width and x scale (Amegas rounds use narrower bricks)
+  const BH = (G.bw || 16) / 2, BXS = (G.bw || 16) / 16, BV = (G.bh || 6) / 2, BYS = (G.bpy || 7) / 7;   // brick half-size and scale (taller rows on the widened stage)
   if (G.grid) for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
     const cell = G.grid[r][c]; if (!cell || cell.hidden) continue;
     let [bx, by] = BRICK(c, r); bx += cell.mx || 0;   // roaming bricks slide between cells
@@ -1276,13 +1284,13 @@ function renderFrame(alpha, now) {
     }
     const isMetal = cell.gold;   // custom model + metal geometry only for the unbreakable (gold) bricks
     const pulse = cell.flash ? 1 + cell.flash * 0.03 : 1;
-    tmpS.set(pulse * BXS, pulse, pulse);
-    tmpM.compose(tmpP.set(X(bx + BH), Y(by + 3), 0), tmpQ.identity(), tmpS);
+    tmpS.set(pulse * BXS, pulse * BYS, pulse);
+    tmpM.compose(tmpP.set(X(bx + BH), Y(by + BV), 0), tmpQ.identity(), tmpS);
     const mesh = isMetal ? metal : bricks, i = isMetal ? nm++ : nb++;
     mesh.setMatrixAt(i, tmpM);
     let col = cell.flash ? WHITE_HOT : (brickColors[cell.t] || WHITE_HOT);
     if (cell.ame === 2 && survOn) col = SURVIVOR_WHITE;   // survivor stone: breakable while it flashes white
-    if (cell.ame && glyphs[cell.ame]) { tmpM.compose(tmpP.set(X(bx + BH), Y(by + 3), 3.62 * pulse), tmpQ.identity(), tmpS.set(pulse * Math.min(1, BXS * 1.3), pulse, pulse)); glyphs[cell.ame].setMatrixAt(ng[cell.ame]++, tmpM); }
+    if (cell.ame && glyphs[cell.ame]) { tmpM.compose(tmpP.set(X(bx + BH), Y(by + BV), 3.62 * pulse), tmpQ.identity(), tmpS.set(pulse * Math.min(1, BXS * 1.3), pulse, pulse)); glyphs[cell.ame].setMatrixAt(ng[cell.ame]++, tmpM); }
     if (sweep > -1) {
       // diagonal position of this brick, 0 at top-left .. 1 at bottom-right
       const d = ((bx - 6) / 221 + ((by - 12) / 126) * 0.6) / 1.6;
@@ -1290,17 +1298,17 @@ function renderFrame(alpha, now) {
       if (k > 0.01) col = sweepCol.copy(col).lerp(WHITE_1, k * 0.65).multiplyScalar(1 + k * 0.9);
     }
     mesh.setColorAt(i, col);
-    tmpM.compose(shadowSpot(X(bx + BH), Y(by + 3), 0, SHADOW_DROP, tmpP), tmpQ.identity(), tmpS.set(15.4 * BXS * RECT_FX, 5.6 * RECT_FY, 1));
+    tmpM.compose(shadowSpot(X(bx + BH), Y(by + BV), 0, SHADOW_DROP, tmpP), tmpQ.identity(), tmpS.set(15.4 * BXS * RECT_FX, 5.6 * BYS * RECT_FY, 1));
     brickShadows.setMatrixAt(ns, tmpM);
-    tmpM.compose(shadowSpot(X(bx + BH), Y(by + 3), 0, NEAR_DROP, tmpP), tmpQ.identity(), tmpS.set(15.4 * BXS * NEAR_FX, 5.6 * NEAR_FY, 1));
+    tmpM.compose(shadowSpot(X(bx + BH), Y(by + BV), 0, NEAR_DROP, tmpP), tmpQ.identity(), tmpS.set(15.4 * BXS * NEAR_FX, 5.6 * BYS * NEAR_FY, 1));
     brickNear.setMatrixAt(ns++, tmpM);
   }
   // just-broken bricks: a quick white flash, then they turn into particles
   for (let gi = ghosts.length - 1; gi >= 0; gi--) {
     const gh = ghosts[gi], age = G.frame - gh.f + alpha;
-    if (age >= 3 || nb >= 420) { flashLight(X(gh.bx + BH), Y(gh.by + 3), brickColors[gh.t] || WHITE_HOT); burst(X(gh.bx + BH), Y(gh.by + 3), brickColors[gh.t] || new THREE.Color(0xffffff), 22, gh.spd || 1, gh.dir); ghosts.splice(gi, 1); continue; }
+    if (age >= 3 || nb >= 420) { flashLight(X(gh.bx + BH), Y(gh.by + BV), brickColors[gh.t] || WHITE_HOT); burst(X(gh.bx + BH), Y(gh.by + BV), brickColors[gh.t] || new THREE.Color(0xffffff), 22, gh.spd || 1, gh.dir); ghosts.splice(gi, 1); continue; }
     const pulse = 1 + (6 - age * 2) * 0.03;
-    tmpM.compose(tmpP.set(X(gh.bx + BH), Y(gh.by + 3), 0), tmpQ.identity(), tmpS.set(pulse * BXS, pulse, pulse));
+    tmpM.compose(tmpP.set(X(gh.bx + BH), Y(gh.by + BV), 0), tmpQ.identity(), tmpS.set(pulse * BXS, pulse * BYS, pulse));
     bricks.setMatrixAt(nb, tmpM); bricks.setColorAt(nb++, WHITE_HOT);
   }
   for (let k = 1; k <= 5; k++) { glyphs[k].count = ng[k]; glyphs[k].instanceMatrix.needsUpdate = true; }
@@ -1663,10 +1671,10 @@ function renderFrame(alpha, now) {
       doorPipeMat.opacity = doorGlowMat.opacity = a; doorPipeMat.depthWrite = doorGlowMat.depthWrite = a > 0.99;
       doorSprites.forEach(sp => (sp.material.opacity = 0.16 * a));
     }
-    if (k > 0 && k < 1 && !G.paused) dissolveDoor(X(PX_R), Y(Math.min(PY_B, 212)), Y(PY_GAP));
+    if (k > 0 && k < 1 && !G.paused) dissolveDoor(X(PX_R), Y(Math.min(PY_B, 212 + fieldDY)), Y(PY_GAP));
   }
   warpLight.intensity = warpOpen ? 1800 + Math.sin(now * 0.02) * 600 : 0;
-  if (warpOpen && !G.paused) exitShimmer(X(PX_R), Y(Math.min(PY_B, 210)), Y(PY_GAP));
+  if (warpOpen && !G.paused) exitShimmer(X(PX_R), Y(Math.min(PY_B, 210 + fieldDY)), Y(PY_GAP));
   const clipOn = warpOpen;
   exitClip[0].constant = X(PX_R - 1);
   for (const mtl of [batBodyMat, batCapMat, batTipMat]) {

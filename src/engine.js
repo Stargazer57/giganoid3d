@@ -7,7 +7,8 @@ function updateStatus() { HOOKS.status(); }
 function setPalette() {}
 function toggleMute() { muted = !muted; if (master) master.gain.value = muted ? 0 : 0.8; updateStatus(); }
 const TRANSP = 255;
-const W = 330, H = 200;   // original screen size in pixels
+const W = 330;
+let H = 200;               // original screen height in pixels (taller for the widened Amegas / Crystal Hammer stage)
 /* ============================================================
    Disk image -> memory image (AmigaDOS, hunk, decruncher, RLE, delta)
    ============================================================ */
@@ -1054,15 +1055,16 @@ const bonusTick = () => { tickCount++; if (tickCount === 2) sfx(8, 1); else if (
    ============================================================ */
 const PL = 6, PT = 8;                       // playfield bounds
 let PR = 227;                               // right edge: wider for Amegas / Crystal Hammer rounds (their own 1:1 grids)
-const BAT_Y = 185;                         // bat blit row ($B9)
+let BAT_Y = 185;                           // bat blit row ($B9); lower on the widened stage
 const BOSS_EYES = [[29, 37], [79, 38]];    // fireball spawn (ball centre, boss-relative) tuned so the z=3 balls land on the eyes
 const PANEL_X = 234;
 // brick grid: 13 x 18 bricks 16 px wide on a 17 px pitch; Amegas (20 x 20) and Crystal Hammer (18 x 20) rounds keep
 // their own grids 1:1 with full-size bricks, and the stage widens to fit them
-const GRID_STD = { cols: 13, rows: 18, bpx: 17, bw: 16 }, GRID_WIDE = { cols: 20, rows: 20, bpx: 17, bw: 16 };
+const GRID_STD = { cols: 13, rows: 18, bpx: 17, bw: 16, bpy: 7, bh: 6 }, GRID_WIDE = { cols: 20, rows: 20, bpx: 17, bw: 16, bpy: 8, bh: 7 };
 // the playfield's right edge follows the grid: 13 columns = the original 221 px; wider grids widen the stage
-const setField = () => { PR = PL + G.cols * G.bpx; };
-const BRICK = (c, r) => [(G.bpx || 17) * c + 6, 7 * r + 12];
+// and the stage grows taller with it (bat lower), keeping roughly the original games' proportions
+const setField = () => { PR = PL + G.cols * G.bpx; const dy = Math.round((PR - 227) * 0.45); BAT_Y = 185 + dy; H = 200 + dy; };
+const BRICK = (c, r) => [(G.bpx || 17) * c + 6, (G.bpy || 7) * r + 12];
 const INTERMISSION = new Set([5, 10, 15, 20, 30, 35, 40, 45]);
 const START_ROUND = [1, 11, 21, 31];
 const LIFE_EVERY = 80000;                  // a new life every 80,000 points
@@ -1412,7 +1414,7 @@ function buildRound(r) {
   // bricks (from the disk's level, or from an imported pack when one is loaded and switched on)
   const usePack = !!pf, pk = usePack ? packCells(pf.pack, pf.i) : null;
   Object.assign(G, GRID_STD);
-  if (pk && (pk[0].length !== 13 || pk.length !== 18)) Object.assign(G, { cols: pk[0].length, rows: pk.length, bpx: 17, bw: 16 });
+  if (pk && (pk[0].length !== 13 || pk.length !== 18)) Object.assign(G, GRID_WIDE, { cols: pk[0].length, rows: pk.length });
   setField();
   const grid = []; const breakable = [];
   for (let y = 0; y < G.rows; y++) {
@@ -1469,7 +1471,7 @@ function newLife() {
 
 // a round's layout for previews, without disturbing the game in progress
 function previewRound(r) {
-  const keep = {}; for (const k of ['cols', 'rows', 'bpx', 'bw', 'round', 'bossNo', 'brickScore', 'speedEvery', 'bg', 'pal', 'grid', 'roundId', 'counter', 'boss', 'bossShots']) keep[k] = G[k];
+  const keep = {}; for (const k of ['cols', 'rows', 'bpx', 'bw', 'bpy', 'bh', 'round', 'bossNo', 'brickScore', 'speedEvery', 'bg', 'pal', 'grid', 'roundId', 'counter', 'boss', 'bossShots']) keep[k] = G[k];
   let out = null;
   try { buildRound(r); out = { grid: G.grid, pal: G.pal, bg: G.bg, boss: G.boss, bossNo: G.bossNo, bpx: G.bpx, bw: G.bw }; }
   finally { Object.assign(G, keep); setField(); if (G.pal) setPalette(G.pal, COP.game); }
@@ -1514,8 +1516,8 @@ function go(mode) {
    ============================================================ */
 function cellAt(px, py) {
   if (px < 6 || py < 12) return null;
-  const P = G.bpx || 17, r = Math.floor((py - 12) / 7);
-  if (r < 0 || r >= G.rows || (py - 12) % 7 > 5 || px < 6) return null;
+  const P = G.bpx || 17, Q = G.bpy || 7, r = Math.floor((py - 12) / Q);
+  if (r < 0 || r >= G.rows || (py - 12) % Q > (G.bh || 6) - 1 || px < 6) return null;
   const c0 = Math.floor((px - 6) / P);
   // test the brick where it is drawn: roaming bricks (Revenge of Doh) sit mx px away from their cell,
   // so check this cell and both neighbours with their offsets (the hit used to land on the home cell only)
