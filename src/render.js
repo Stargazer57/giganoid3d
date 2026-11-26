@@ -254,7 +254,10 @@ function fitField() {
   };
   place([wallL, wallRTop, wallRLow, wallT, ...frameElbows]);
   mirrorGroup.children.forEach(copy => place(copy.children));
-  for (const m of [bgPlane, vignette]) { m.scale.x = k; m.position.x = X((PX_L + PX_R) / 2); }
+  // uniform scale, pinned at the top centre: grows down, left and right without distorting the image
+  { const cx = X((PX_L + PX_R) / 2);
+    bgPlane.scale.set(k, k, 1); bgPlane.position.x = cx; bgPlane.position.y = Y(BG.t) - (BG.b - BG.t) * k / 2;
+    vignette.scale.set(k, k, 1); vignette.position.x = cx; vignette.position.y = Y(3) - (BG.b - 3) * k / 2; }
   bottomFade.scale.x = k; bottomFade.position.x = X((PX_L + PX_R) / 2); bottomFade.position.y = Y((194 + 330) / 2 + dy);
   warpLight.position.set(X(PR + 5), Y(189 + dy), 6);
   DUST_R = PR - 4; DUST_B = 196 + dy;
