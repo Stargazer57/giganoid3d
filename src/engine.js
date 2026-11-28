@@ -537,14 +537,14 @@ function audioInit() {
 // replacement sounds: file names follow the exported pack (sfx_01..sfx_18, intro, jingle)
 const CUSTOM = new Map();
 function b64ToBuf(b64) { const bin = atob(b64), n = bin.length, u = new Uint8Array(n); for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
-try { CUSTOM.set('sfx_01', [b64ToBuf(LASER_OGG)]); } catch (e) {}   // default laser = the supplied sample (a user upload still overrides)
+let LASER_DEFAULT = null; try { LASER_DEFAULT = b64ToBuf(LASER_OGG); CUSTOM.set('sfx_01', [LASER_DEFAULT]); } catch (e) {}   // default laser = the supplied sample (a user upload still overrides)
 // looping laser: while auto-fire is held the laser sound loops instead of retriggering per shot
 let laserLoop = null;
 function startLaserLoop() {
   if (!AC || muted || laserLoop) return;
   const s = SND && SND[0]; if (!s) return; const buf = sampleBuf(s); if (!buf) return;
   try { const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
-    const sr = buf.sampleRate || 44100; src.loopStart = 3700 / sr; src.loopEnd = 94310 / sr;   // sustain loop region (samples)
+    const sr = buf.sampleRate || 44100; if (buf._builtin) { src.loopStart = 3700 / sr; src.loopEnd = 94310 / sr; }   // sustain loop region of the bundled sample; a user's own laser loops whole
     const gn = AC.createGain(); gn.gain.value = s.custom ? 0.6 : (s.vol / 64) * 0.6;
     let node = gn, pan = null;
     if (AC.createStereoPanner) { pan = AC.createStereoPanner(); gn.connect(pan); node = pan; }
@@ -570,7 +570,7 @@ function applyCustomSounds() {
     const e = soundEntry(k); if (!e) continue;
     const list = Array.isArray(bufs) ? bufs : [bufs];   // several files for one sound = round-robin variations
     e.custom = [];
-    for (const buf of list) jobs.push(new Promise(res => AC.decodeAudioData(buf.slice(0), b => { e.custom.push(b); res(); }, () => res())));
+    for (const buf of list) jobs.push(new Promise(res => AC.decodeAudioData(buf.slice(0), b => { b._builtin = buf === LASER_DEFAULT; e.custom.push(b); res(); }, () => res())));
   }
   return Promise.all(jobs).then(() => { for (const k of ['intro', 'jingle']) { const e = soundEntry(k); if (e && e.custom && !e.custom.length) e.custom = null; } SND.forEach(e => { if (e.custom && !e.custom.length) e.custom = null; }); });
 }
@@ -611,9 +611,9 @@ function play(s, c, loop, x) {
       const first = g, last = node;
       src.onended = () => { const i = voices.indexOf(src); if (i >= 0) voices.splice(i, 1);
         try { src.disconnect(); first.disconnect(); if (last !== first) last.disconnect(); if (steal) steal.disconnect(); } catch (e) {} };
-      src._t0 = AC.currentTime; voices.push(src);
+      src._t0 = AC.currentTime; src._custom = !!s.custom; voices.push(src);   // custom sounds play to their own end
       // cap: drop the oldest voice that has already been ringing a while — never a freshly started one (that was cutting bat hits during busy moments)
-      if (voices.length > 48) { const old = voices.find(v => AC.currentTime - (v._t0 || 0) > 0.12); if (old) { try { old.stop(); } catch (e) {} const j = voices.indexOf(old); if (j >= 0) voices.splice(j, 1); } }
+      if (voices.length > 48) { const old = voices.find(v => !v._custom && AC.currentTime - (v._t0 || 0) > 0.12) || voices.find(v => AC.currentTime - (v._t0 || 0) > 2); if (old) { try { old.stop(); } catch (e) {} const j = voices.indexOf(old); if (j >= 0) voices.splice(j, 1); } }
     }
   } catch (e) {}
 }
