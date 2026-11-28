@@ -611,7 +611,7 @@ function play(s, c, loop, x) {
       const first = g, last = node;
       src.onended = () => { const i = voices.indexOf(src); if (i >= 0) voices.splice(i, 1);
         try { src.disconnect(); first.disconnect(); if (last !== first) last.disconnect(); if (steal) steal.disconnect(); } catch (e) {} };
-      src._t0 = AC.currentTime; src._custom = !!s.custom; voices.push(src);   // custom sounds play to their own end
+      src._t0 = AC.currentTime; src._custom = !!s.custom && !(src.buffer && src.buffer._builtin); voices.push(src);   // custom sounds play to their own end
       // cap: drop the oldest voice that has already been ringing a while — never a freshly started one (that was cutting bat hits during busy moments)
       if (voices.length > 48) { const old = voices.find(v => !v._custom && AC.currentTime - (v._t0 || 0) > 0.12) || voices.find(v => AC.currentTime - (v._t0 || 0) > 2); if (old) { try { old.stop(); } catch (e) {} const j = voices.indexOf(old); if (j >= 0) voices.splice(j, 1); } }
     }
