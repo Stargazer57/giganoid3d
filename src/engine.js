@@ -544,7 +544,7 @@ function startLaserLoop() {
   if (!AC || muted || laserLoop) return;
   const s = SND && SND[0]; if (!s) return; const buf = sampleBuf(s); if (!buf) return;
   try { const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
-    const sr = buf.sampleRate || 44100; if (buf._builtin) { src.loopStart = 3700 / sr; src.loopEnd = 94310 / sr; }   // sustain loop region of the bundled sample; a user's own laser loops whole
+    const sr = buf.sampleRate || 44100; src.loopStart = 3700 / sr; src.loopEnd = 94310 / sr;   // sustain loop region (samples)
     const gn = AC.createGain(); gn.gain.value = s.custom ? 0.6 : (s.vol / 64) * 0.6;
     let node = gn, pan = null;
     if (AC.createStereoPanner) { pan = AC.createStereoPanner(); gn.connect(pan); node = pan; }
